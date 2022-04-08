@@ -1,6 +1,6 @@
 #!/bin/bash
 
-$audioFile="$1"
+audioFile=$1
 
 cd ~/Library/Application\ Support/Anki2/User\ 1/collection.media
 
