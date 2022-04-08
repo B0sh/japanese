@@ -1,32 +1,13 @@
 #!/bin/bash
 
+$audioFile="$1"
+
 cd ~/Library/Application\ Support/Anki2/User\ 1/collection.media
 
-echo "### B0sh's script: send screenshot to recent anki card ###"
+echo "### B0sh's script: send audio to recent anki card ###"
 echo ""
 
-# option for youtube screenshot
-if [ "$1" = "downloads" ]; then
-    imgsrc="$(ls -t ~/Downloads | head -n1)"
-    extension="${imgsrc: -3}"
-    if [ "$extension" = "png" ]; then
-        # OMG this mv command was so painful. No idea why you can't use ~ in the first argument...
-        cd ~/Downloads
-        mv "${imgsrc}" ~/Library/Application\ Support/Anki2/User\ 1/collection.media
-        cd ~/Library/Application\ Support/Anki2/User\ 1/collection.media
-        echo "Found image: $imgsrc"
-    else
-        echo "No image in downloads"
-    fi
-else
-    imgsrc="Screenshot Mac $(date +"%Y-%m-%d %H-%M-%S").png"
-    echo $imgsrc 
-    screencapture -i "$imgsrc"
-fi
-
-# Add screenshot to last created anki card with AnkiConnect addon
-
-if [ -f "$imgsrc" ]; then
+if [ -f "$audioFile" ]; then
     # Open gui to a random note becaues there's a bug where if the note is
     # already open it won't update the note
     guiBrowse=$(curl -s -d '{
@@ -56,7 +37,7 @@ if [ -f "$imgsrc" ]; then
             "note": {
                 "id": '"$noteID"',
                 "fields": {
-                    "Picture": "<img src='"\\\"$imgsrc\\\""'>"
+                    "SentenceAudio": "[sound:'"$audioFile"']"
                 }
             }
         }
@@ -73,5 +54,5 @@ if [ -f "$imgsrc" ]; then
     }' -H 'Content-Type: application/json' http://127.0.0.1:8765)
     echo "guiBrowse result: $guiBrowse"
 else
-    echo "image does not exist"
-fi
+    echo "audio file does not exist"
+fi 
