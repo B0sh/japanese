@@ -29,7 +29,6 @@ if [ -f "$audioFile" ]; then
 
     echo "Got latest note ID: $noteID"
 
-    
     updateNoteFields=$(curl -s -d '{
         "action": "updateNoteFields",
         "version": 6,

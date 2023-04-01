@@ -63,6 +63,35 @@ if [ -f "$imgsrc" ]; then
             "query": "\"nid:'1630873192505'\""
         }
     }' -H 'Content-Type: application/json' http://127.0.0.1:8765)
+
+    # Optional code that look at the current open tab only in chrome and updates the 
+    # AnkiCard url and document title for my personal records. The purpose is
+    # sometimes I look up words that I hear in videos and can't use yomichan to 
+    # get the data. (this is super fun)
+    titleUpdate=""
+    activeTab=$(osascript -e 'tell application "Google Chrome"
+        if 0 < (count of windows) then
+            tell front window
+                {title, URL} of active tab
+            end tell
+        else
+            "No windows open in Chrome"
+        end if
+    end tell')
+
+    if [ "$activeTab" = "No windows open in Chrome" ]; then
+        echo "No windows open in Chrome" 
+    else
+        tabTitle=$(echo ${activeTab%, *})
+        tabURL=$(echo ${activeTab##* })
+        echo "Tab title: $tabTitle"
+        echo "URL: $tabURL"
+
+        if [[ "$tabURL" =~ "youtube.com" ]] || [[ "$tabURL" =~ "twitch.tv" ]] ; then
+            titleUpdate="\"URL\": \"<a href=\\\"$tabURL\\\">$tabURL</a>\", \"DocumentTitle\": \"$tabTitle\", "
+        fi
+    fi
+    # end optional fun stuff
     
     updateNoteFields=$(curl -s -d '{
         "action": "updateNoteFields",
@@ -71,6 +100,7 @@ if [ -f "$imgsrc" ]; then
             "note": {
                 "id": '"$noteID"',
                 "fields": {
+                    '"$titleUpdate"'
                     "Picture": "<img src='"\\\"$imgsrc\\\""'>"
                 }
             }
