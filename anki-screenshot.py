@@ -2,6 +2,7 @@ import requests
 import json
 import sys
 import os
+from subprocess import Popen
 from datetime import datetime, timedelta
 
 if sys.platform == 'win32':
@@ -10,6 +11,24 @@ if sys.platform == 'win32':
 elif sys.platform == 'darwin':
     mac = True
     mediaPath = os.path.expanduser('~/Library/Application Support/Anki2/User 1/collection.media')
+    import subprocess
+
+    def asrun(ascript):
+        "Run the given AppleScript and return the standard output."
+
+        osa = subprocess.run(['/usr/bin/osascript', '-'], input=ascript, text=True, capture_output=True)
+        if osa.returncode == 0:
+            return osa.stdout.rstrip()
+        else:
+            raise ChildProcessError(f'AppleScript: {osa.stderr.rstrip()}')
+
+
+    def asquote(astr):
+        "Return the AppleScript equivalent of the given string."
+
+        astr = astr.replace('"', '" & quote & "')
+        return '"{}"'.format(astr)
+
 else:
     raise "Platform not supported"
 
@@ -41,9 +60,10 @@ if not recent_png_files:
     print(" Take Screenshot ")
 
     if mac:
-        imgsrc = f'Screenshot Mac {datetime.now().strftime("%Y-%m-%d %H-%M-%S")}.png'
+        os.chdir(mediaPath)
+        imgsrc = f'Screenshot Mac {datetime.now().strftime("%Y-%m-%d %H-%M-%S")}.jpg'
         print(imgsrc)
-        os.system(f'screencapture -i "{imgsrc}"')
+        os.system(f'screencapture -tjpg -i "{imgsrc}"')
     else:
         # regular share x workflow from here
         os.chdir('C:\Program Files\ShareX')
@@ -61,6 +81,8 @@ else:
 
 
 if imgsrc:
+   
+
     response = requests.post(server, json = {
         'action': 'guiBrowse',
         'version': 6,
@@ -70,7 +92,7 @@ if imgsrc:
     })
     print("guiBrowse result", response.text)
 
-    response = requests.post(server, json = {
+    updateDto = {
         'action': 'updateNoteFields',
         'version': 6,
         'params': {
@@ -81,8 +103,49 @@ if imgsrc:
                 }
             }
         }
-    })
+    }
+
+    if mac:
+        # Optional code that look at the current open tab only in chrome and updates the 
+        # AnkiCard url and document title for my personal records. The purpose is
+        # sometimes I look up words that I hear in videos and can't use yomichan to 
+        # get the data. (this is super fun)
+        activeTab = asrun('''
+            tell application "Google Chrome"
+                if 0 < (count of windows) then
+                    tell front window
+                        { title } of active tab
+                    end tell
+                else
+                    "No windows open in Chrome"
+                end if
+            end tell
+        ''')
+
+        activeURL = asrun('''
+            tell application "Google Chrome"
+                if 0 < (count of windows) then
+                    tell front window
+                        { URL } of active tab
+                    end tell
+                else
+                    "No windows open in Chrome"
+                end if
+            end tell
+        ''')
+        print("Tab Title: ", activeTab)
+        print("Tab URL: ", activeURL)
+        
+        if activeTab != "No windows open in Chrome" and (
+            "youtube.com" in activeURL or "twitch.tv" in activeURL
+        ):
+            updateDto['params']['note']['fields']['URL'] = f'<a href="{activeURL}">{activeURL}</a>'
+            updateDto['params']['note']['fields']['DocumentTitle'] = activeTab
+
+
+    response = requests.post(server, json = updateDto)
     print("update result", response.text)
+
 
     response = requests.post(server, json = {
         'action': 'guiBrowse',
