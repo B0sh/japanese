@@ -80,9 +80,8 @@ else:
         print('No image in downloads')
 
 
-if imgsrc:
+if imgsrc and os.path.exists(imgsrc):
    
-
     response = requests.post(server, json = {
         'action': 'guiBrowse',
         'version': 6,
