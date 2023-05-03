@@ -35,6 +35,20 @@ else:
 server = 'http://127.0.0.1:8765'
 
 response = requests.post(server, json = {
+    'action': 'getMediaDirPath',
+    'version': 6,
+})
+
+if response:
+    result = json.loads(response.text)
+    if result['result'] and os.path.exists(result['result']):
+        mediaPath = result['result']
+        print(result)
+    else:
+        raise "Media folder not found"
+    
+
+response = requests.post(server, json = {
     'action': 'findNotes',
     'version': 6,
     'params': {
@@ -80,8 +94,7 @@ else:
         print('No image in downloads')
 
 
-if imgsrc and os.path.exists(imgsrc):
-   
+if imgsrc and os.path.exists(f'{mediaPath}/{imgsrc}'):
     response = requests.post(server, json = {
         'action': 'guiBrowse',
         'version': 6,
