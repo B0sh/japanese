@@ -2,15 +2,16 @@ import requests
 import json
 import sys
 import os
+import uuid
 from subprocess import Popen
 from datetime import datetime, timedelta
 
 if sys.platform == 'win32':
     mac = False
-    mediaPath = os.path.expanduser('~/AppData/Roaming/Anki2/User 1/collection.media')
+    collection_path = os.path.expanduser('~/AppData/Roaming/Anki2/User 1/collection.media')
 elif sys.platform == 'darwin':
     mac = True
-    mediaPath = os.path.expanduser('~/Library/Application Support/Anki2/User 1/collection.media')
+    collection_path = os.path.expanduser('~/Library/Application Support/Anki2/User 1/collection.media')
     import subprocess
 
     def asrun(ascript):
@@ -42,7 +43,7 @@ response = requests.post(server, json = {
 if response:
     result = json.loads(response.text)
     if result['result'] and os.path.exists(result['result']):
-        mediaPath = result['result']
+        collection_path = result['result']
         print(result)
     else:
         raise "Media folder not found"
@@ -68,16 +69,16 @@ print("Latest Anki Note ID:", noteId)
 downloads_dir = os.path.expanduser('~/Downloads')
 png_files = [f for f in os.listdir(downloads_dir) if f.endswith('.jpg')]
 recent_png_files = [f for f in png_files if (datetime.now() - datetime.fromtimestamp(os.path.getctime(os.path.join(downloads_dir, f)))) <= timedelta(minutes=3)]
-imgsrc = ""
+card_image = ""
 
 if not recent_png_files:
     print(" Take Screenshot ")
 
     if mac:
-        os.chdir(mediaPath)
-        imgsrc = f'Screenshot Mac {datetime.now().strftime("%Y-%m-%d %H-%M-%S")}.jpg'
-        print(imgsrc)
-        os.system(f'screencapture -tjpg -i "{imgsrc}"')
+        os.chdir(collection_path)
+        card_image = f'Screenshot Mac {datetime.now().strftime("%Y-%m-%d %H-%M-%S")}.jpg'
+        print(card_image)
+        os.system(f'screencapture -tjpg -i "{card_image}"')
     else:
         # regular share x workflow from here
         os.chdir('C:\Program Files\ShareX')
@@ -85,16 +86,23 @@ if not recent_png_files:
 else:
     # print (" Screenshot exists ")
     # imgsrc = sorted(recent_png_files, key=lambda f: os.path.getmtime(os.path.join(downloads_dir, f)), reverse=True)[0]
-    imgsrc = recent_png_files[0]
-    extension = imgsrc[-3:]
+    card_image = recent_png_files[0]
+    extension = card_image[-3:]
     if extension == 'png' or extension == 'jpg':
-        os.rename(f'{downloads_dir}/{imgsrc}', f'{mediaPath}/{imgsrc}')
-        print(f'Found image: {imgsrc}')
+        print(f'Found image: {card_image}')
+
+        downloads_file = f'{downloads_dir}/{card_image}'
+        if os.path.exists(f'{collection_path}/{card_image}'):
+            card_image = f'{card_image[:-4]}-{str(uuid.uuid4())[0:8]}.{extension}'
+            print(f'Renamed to {card_image}')
+        anki_file = f'{collection_path}/{card_image}'
+
+        os.rename(downloads_file, anki_file)
     else:
         print('No image in downloads')
 
 
-if imgsrc and os.path.exists(f'{mediaPath}/{imgsrc}'):
+if card_image and os.path.exists(f'{collection_path}/{card_image}'):
     response = requests.post(server, json = {
         'action': 'guiBrowse',
         'version': 6,
@@ -111,7 +119,7 @@ if imgsrc and os.path.exists(f'{mediaPath}/{imgsrc}'):
             'note': {
                 'id': noteId,
                 'fields': {
-                    'Picture': f'<img src=\"{imgsrc}\">'
+                    'Picture': f'<img src=\"{card_image}\">'
                 }
             }
         }
