@@ -1,5 +1,3 @@
-ctrl - l : say xoxo
-
-ctrl - a : python3 ~/Code/japanese-tools/anki-screenshot.py
-ctrl - r : python3 ~/Code/japanese-tools/ocr.py
+ctrl - a : ~/Code/japanese-tools/.venv/bin/python /Users/b0sh/Code/japanese-tools/anki-screenshot.py
+ctrl - r : ~/Code/japanese-tools/.venv/bin/python /Users/b0sh/Code/japanese-tools/ocr.py
 ctrl - g : shortcuts run "Audio to Anki (auto stop)"

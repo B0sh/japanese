@@ -8,10 +8,11 @@ imgsrc = "/tmp/ocr.png"
 
 os.system(f'screencapture -i "{imgsrc}"')
 
-mocr = MangaOcr()
-text = mocr(imgsrc)
+if os.path.isfile(imgsrc):
+    mocr = MangaOcr()
+    text = mocr(imgsrc)
 
-if text != "":
-    os.system(f'open "https://jisho.org/search/{text}"')
+    if text != "":
+        os.system(f'open "https://jisho.org/search/{text}"')
 
-os.system(f'rm {imgsrc}')
+    os.system(f'rm {imgsrc}')

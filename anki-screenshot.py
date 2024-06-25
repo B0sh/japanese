@@ -1,3 +1,16 @@
+"""
+Instlation instructions
+
+## cd to installation folder
+cd ~/japanese-tools
+
+
+## Create venv
+python3 -m venv .venv     
+source .venv/bin/activate
+python3 -m pip install -r requirements.tx
+"""
+
 import requests
 import json
 import sys
@@ -5,6 +18,13 @@ import os
 import uuid
 from subprocess import Popen
 from datetime import datetime, timedelta
+import easygui
+
+def notify(title, text):
+    if sys.platform == 'darwin': 
+        os.system("""
+                osascript -e 'display dialog "{}" with title "{}"'
+                """.format(text, title))
 
 if sys.platform == 'win32':
     mac = False
@@ -44,7 +64,7 @@ if response:
     result = json.loads(response.text)
     if result['result'] and os.path.exists(result['result']):
         collection_path = result['result']
-        print(result)
+        print("Collection path: ", collection_path)
     else:
         raise "Media folder not found"
     
@@ -59,6 +79,7 @@ response = requests.post(server, json = {
 
 result = json.loads(response.text)
 if result['result']:
+    recentNotes = result['result']
     noteId = max(result['result'])
 else: 
     raise "No latest note found"
@@ -66,40 +87,120 @@ else:
 print("Latest Anki Note ID:", noteId)
 
 
-downloads_dir = os.path.expanduser('~/Downloads')
-png_files = [f for f in os.listdir(downloads_dir) if f.endswith('.jpg')]
-recent_png_files = [f for f in png_files if (datetime.now() - datetime.fromtimestamp(os.path.getctime(os.path.join(downloads_dir, f)))) <= timedelta(minutes=3)]
+response = requests.post(server, json = {
+    'action': 'notesInfo',
+    'version': 6,
+    'params': {
+        'notes': [ noteId ]
+    }
+})
+result = json.loads(response.text)
+if result['result']:
+    if result['result'][0]['fields']['Picture']['value']:
+        notify('Anki Screenshot', 'A picture already exists on the latest Anki Card')
+
+        response = requests.post(server, json = {
+            'action': 'guiBrowse',
+            'version': 6,
+            'params': {
+                'query': 'added:1'
+            }
+        })
+
+
+        exit()
+        
+        """
+        print("card picture already present; GUI Not working")
+ 
+        title = "B0sh's Famous Card Picker"
+
+        msg = "A picture already exists on the latest Anki Card"
+
+
+        recentNotes.sort(reverse=True)
+        response = requests.post(server, json = {
+            'action': 'notesInfo',
+            'version': 6,
+            'params': {
+                'notes': recentNotes
+            }
+        })
+
+        result = json.loads(response.text)
+        cards = []
+        if result['result']:
+            for x in result['result']:
+                cards.append(str(x['noteId']) + "; " + x['fields']['Expression']['value'])
+
+        response = easygui.choicebox(msg, title, cards)
+        if response == None:
+            print("Cancelled")
+            exit()
+            pass
+        else:
+            noteId = int(response.split(';')[0])
+            print(noteId)
+
+        """
+
+    else:
+        print("No picture foudn, proceed as normal")
+else:
+    print("no latest note found, skipping existing content check")
+
+
+
+
+
+recent_images = []
 card_image = ""
 
-if not recent_png_files:
-    print(" Take Screenshot ")
+for potential_image_folders in [ '~/Downloads', '~/Desktop' ]:
+    potential_image_dir = os.path.expanduser(potential_image_folders)
+    potential_images = [f for f in os.listdir(potential_image_dir) if (f.endswith('.jpg') or f.endswith('.png'))]
 
+    for image in [f for f in potential_images if (datetime.now() - datetime.fromtimestamp(os.path.getctime(os.path.join(potential_image_dir, f)))) <= timedelta(minutes=3)]:
+        recent_images.append(f'{potential_image_dir}/{image}')
+
+if not recent_images:
     if mac:
         os.chdir(collection_path)
         card_image = f'Screenshot Mac {datetime.now().strftime("%Y-%m-%d %H-%M-%S")}.jpg'
-        print(card_image)
-        os.system(f'screencapture -tjpg -i "{card_image}"')
+        print("Taking screenshot: ", card_image)
+        
+        # Broken Macos 15 :( 
+        # os.system(f'screencapture -tjpg -i "{card_image}"')
+        notify('Anki Screenshot', 'Screenshots broken in MacOS 15')
+        exit()
     else:
+        print(" Take Screenshot ")
+
         # regular share x workflow from here
-        os.chdir('C:\Program Files\ShareX')
+        os.chdir(f'C:\\Program Files\\ShareX')
         os.system('ShareX.exe -workflow "Anki Screenshot"')
 else:
-    # print (" Screenshot exists ")
+    print("");
+    print("Found potential images: ", recent_images)
     # imgsrc = sorted(recent_png_files, key=lambda f: os.path.getmtime(os.path.join(downloads_dir, f)), reverse=True)[0]
-    card_image = recent_png_files[0]
+    card_image = os.path.basename(recent_images[0])
     extension = card_image[-3:]
     if extension == 'png' or extension == 'jpg':
         print(f'Found image: {card_image}')
 
-        downloads_file = f'{downloads_dir}/{card_image}'
         if os.path.exists(f'{collection_path}/{card_image}'):
             card_image = f'{card_image[:-4]}-{str(uuid.uuid4())[0:8]}.{extension}'
             print(f'Renamed to {card_image}')
         anki_file = f'{collection_path}/{card_image}'
 
-        os.rename(downloads_file, anki_file)
+        os.rename(recent_images[0], anki_file)
     else:
         print('No image in downloads')
+
+
+
+
+
 
 
 if card_image and os.path.exists(f'{collection_path}/{card_image}'):
