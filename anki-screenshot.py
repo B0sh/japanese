@@ -11,6 +11,7 @@ source .venv/bin/activate
 python3 -m pip install -r requirements.tx
 """
 
+from PIL import Image
 import requests
 import json
 import sys
@@ -18,7 +19,6 @@ import os
 import uuid
 from subprocess import Popen
 from datetime import datetime, timedelta
-import easygui
 
 def notify(title, text):
     if sys.platform == 'darwin': 
@@ -182,20 +182,31 @@ if not recent_images:
 else:
     print("");
     print("Found potential images: ", recent_images)
-    # imgsrc = sorted(recent_png_files, key=lambda f: os.path.getmtime(os.path.join(downloads_dir, f)), reverse=True)[0]
-    card_image = os.path.basename(recent_images[0])
-    extension = card_image[-3:]
-    if extension == 'png' or extension == 'jpg':
+
+    original_image = recent_images[0]
+    card_image = os.path.basename(original_image)
+
+    # automatically convert PNG to JPG
+    if os.path.splitext(original_image)[1] == '.png':
+        png_image = Image.open(original_image)
+        png_image = png_image.convert('RGB')
+        png_image.save(os.path.splitext(original_image)[0] + '.jpg', format='JPEG', quality=80)
+        original_image = os.path.splitext(original_image)[0] + '.jpg'
+        card_image = os.path.basename(original_image)
+        print(f'Converted PNG to JPG: {card_image}')
+
+        os.remove(recent_images[0])
+
+    if os.path.splitext(original_image)[1] == '.jpg':
+
         print(f'Found image: {card_image}')
 
         if os.path.exists(f'{collection_path}/{card_image}'):
-            card_image = f'{card_image[:-4]}-{str(uuid.uuid4())[0:8]}.{extension}'
+            card_image = f'{card_image[:-4]}-{str(uuid.uuid4())[0:8]}.jpg'
             print(f'Renamed to {card_image}')
         anki_file = f'{collection_path}/{card_image}'
 
-        os.rename(recent_images[0], anki_file)
-    else:
-        print('No image in downloads')
+        os.rename(original_image, anki_file)
 
 
 
